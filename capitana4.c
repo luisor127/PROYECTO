@@ -95,7 +95,7 @@ int main(int argc, char *argv[]) {
     signal(SIGINT, handle_sigint);
     signal(SIGCHLD, handle_sigchld);
 
-    // --- LANZAR BARCOS ---
+    // --- LANZAR BARCOS ---       
     for (int i = 0; i < ship_count; i++) {
         int pasos = random_mode ? (rand() % 11) + 10 : 0;
         pid_t pid = fork();
