@@ -107,7 +107,7 @@ void try_move(int dx, int dy) {
     if (ship.food < 5) {
 
             printf(ROJO "NOK" RESET "\n"); 
-            ship_print(); // AÑADIDO: Para imprimir estado al fallar
+            //ship_print(); // AÑADIDO: Para imprimir estado al fallar
             fflush(stdout); 
             return;
     }
@@ -119,7 +119,7 @@ void try_move(int dx, int dy) {
     if (!map_can_sail(ship.mapa, new_x, new_y)) {
 
             printf(ROJO "NOK" RESET "\n"); 
-            ship_print(); // Imprimes mapa al chocar igualmente, para mostrar la posición del barco.
+            //ship_print(); // Imprimes mapa al chocar igualmente, para mostrar la posición del barco.
             fflush(stdout); 
             return; 
     }
@@ -161,7 +161,7 @@ void try_move(int dx, int dy) {
 
         printf(VERDE "OK" RESET "\n");
         fflush(stdout); 
-        ship_print(); // Aquí se imprime el estado en caso de éxito
+      //  ship_print(); // Aquí se imprime el estado en caso de éxito
     
 }
 
@@ -406,7 +406,7 @@ int main(int argc, char *argv[]) {
                 // Si encontramos un ENTER, procesamos el comando acumulado
                 buffer[i] = '\0'; // Cerramos el string
                 i = 0;            // Reiniciamos el contador para la próxima
-        
+
                 if (strcasecmp(buffer, "up") == 0)         try_move(0, -1);
                 else if (strcasecmp(buffer, "down") == 0)  try_move(0, 1);
                 else if (strcasecmp(buffer, "left") == 0)  try_move(-1, 0);
