@@ -148,7 +148,7 @@ void try_move(int dx, int dy) {
 
 
     // 6. IMPRIMIR (ÉXITO)
-        map_print(ship.mapa); // Mapa primero
+        //map_print(ship.mapa); // Mapa primero
 
         // Mensajes de eventos
         if (cell_type == 'I') 
