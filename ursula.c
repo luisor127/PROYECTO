@@ -88,6 +88,7 @@ void check_battles(int x, int y) {
         for (int i = 0; i < num_fighters; i++) {
             if (i != winner_idx) {
                 int loser_id = fighters[i];
+				kill(ships[loser_id].pid, SIGUSR2); // <--- AÑADIR ESTA LÍNEA
                 
                 // Reducir comida del perdedor
                 if (ships[loser_id].food < 10) ships[loser_id].food = 0;
@@ -108,6 +109,7 @@ void check_battles(int x, int y) {
         }
 
         // 3. Repartir el botín
+		kill(ships[winner_id].pid, SIGUSR1); // <--- AÑADIR ESTA LÍNEA
         ships[winner_id].gold += 10;
         ursula_gold += (oro_recaudado - 10); // Puede ser negativo y restarle a Úrsula
 
@@ -165,70 +167,104 @@ int main(int argc, char *argv[]) {
     char line[512];
 
     // 2. Bucle principal de lectura
+    // 2. Bucle principal de lectura
     while (fgets(line, sizeof(line), f)) {
         // Limpiamos el salto de línea
         line[strcspn(line, "\n")] = 0;
         if (strlen(line) == 0) continue;
 
-        int pid;
-        char tipo[32];
+        // 1. Buscamos la primera coma
+        char *comma1 = strchr(line, ',');
+        if (comma1 == NULL) continue; // Si no hay coma, el formato es inválido
+
+        // Extraemos el PID con strtol (como en capitana.c)
+        char *endptr;
+        int pid = (int)strtol(line, &endptr, 10);
         
-        // Primero intentamos extraer el PID y el TIPO
-        if (sscanf(line, "%d,%31[^,]", &pid, tipo) >= 2) {
+        // 2. Extraemos el TIPO
+        char tipo[32] = {0};
+        char *start_tipo = comma1 + 1; // El tipo empieza justo después de la coma
+        char *comma2 = strchr(start_tipo, ','); // Buscamos si hay otra coma después
+        
+        if (comma2 != NULL) {
+            // Si hay otra coma (es INIT o MOVE), copiamos solo hasta esa coma
+            int len = comma2 - start_tipo;
+            if (len >= sizeof(tipo)) len = sizeof(tipo) - 1;
+            strncpy(tipo, start_tipo, len);
+        } else {
+            // Si no hay más comas (es INIT_CAPT, END_CAPT o TERMINATE), copiamos el resto
+            strncpy(tipo, start_tipo, sizeof(tipo) - 1);
+        }
+
+        // --- MENSAJES DE CAPITANAS ---
+        if (strcmp(tipo, "INIT_CAPT") == 0) {
+            int idx = find_captain_index(pid);
+            if (idx != -1) {
+                captains[idx].pid = pid;
+                captains[idx].active = 1;
+                active_captains_count++;
+                simulation_started = 1;
+                printf("Capitana unida. PID: %d. Activas: %d\n", pid, active_captains_count);
+            }
+        } 
+        else if (strcmp(tipo, "END_CAPT") == 0) {
+            int idx = find_captain_index(pid);
+            if (idx != -1 && captains[idx].active) {
+                captains[idx].active = 0;
+                active_captains_count--;
+                printf("Capitana finalizada. PID: %d. Activas: %d\n", pid, active_captains_count);
+            }
+        } 
+        
+        // --- MENSAJES DE BARCOS ---
+        else if (strcmp(tipo, "TERMINATE") == 0) {
+            int idx = find_ship_index(pid);
+            if (idx != -1 && ships[idx].active) {
+                ships[idx].active = 0;
+                active_ships_count--;
+                printf("Barco hundido/finalizado. PID: %d. Activos: %d\n", pid, active_ships_count);
+            }
+        } 
+        else if (strcmp(tipo, "INIT") == 0 || strcmp(tipo, "MOVE") == 0) {
+            // Para INIT y MOVE extraemos el resto de datos con strtol
+            if (comma2 == NULL) continue; // Por seguridad, si no hay coma2, abortamos
             
-            // --- MENSAJES DE CAPITANAS ---
-            if (strcmp(tipo, "INIT_CAPT") == 0) {
-                int idx = find_captain_index(pid);
-                if (idx != -1) {
-                    captains[idx].pid = pid;
-                    captains[idx].active = 1;
-                    active_captains_count++;
-                    simulation_started = 1;
-                    printf("Capitana unida. PID: %d. Activas: %d\n", pid, active_captains_count);
-                }
-            } 
-            else if (strcmp(tipo, "END_CAPT") == 0) {
-                int idx = find_captain_index(pid);
-                if (idx != -1 && captains[idx].active) {
-                    captains[idx].active = 0;
-                    active_captains_count--;
-                    printf("Capitana finalizada. PID: %d. Activas: %d\n", pid, active_captains_count);
-                }
-            } 
+            char *ptr = comma2 + 1;
+            int x = (int)strtol(ptr, &endptr, 10);
             
-            // --- MENSAJES DE BARCOS ---
-            else if (strcmp(tipo, "TERMINATE") == 0) {
-                int idx = find_ship_index(pid);
-                if (idx != -1 && ships[idx].active) {
-                    ships[idx].active = 0;
-                    active_ships_count--;
-                    printf("Barco hundido/finalizado. PID: %d. Activos: %d\n", pid, active_ships_count);
-                }
-            } 
-            else if (strcmp(tipo, "INIT") == 0 || strcmp(tipo, "MOVE") == 0) {
-                // Para INIT y MOVE necesitamos leer los demás datos
-                int x, y, food, gold;
-                sscanf(line, "%d,%[^,],%d,%d,%d,%d", &pid, tipo, &x, &y, &food, &gold);
+            ptr = strchr(endptr, ',');
+            if (ptr == NULL) continue;
+            ptr++;
+            int y = (int)strtol(ptr, &endptr, 10);
+            
+            ptr = strchr(endptr, ',');
+            if (ptr == NULL) continue;
+            ptr++;
+            int food = (int)strtol(ptr, &endptr, 10);
+            
+            ptr = strchr(endptr, ',');
+            if (ptr == NULL) continue;
+            ptr++;
+            int gold = (int)strtol(ptr, NULL, 10);
+            
+            int idx = find_ship_index(pid);
+            if (idx != -1) {
+                ships[idx].pid = pid;
+                ships[idx].x = x;
+                ships[idx].y = y;
+                ships[idx].food = food;
+                ships[idx].gold = gold;
                 
-                int idx = find_ship_index(pid);
-                if (idx != -1) {
-                    ships[idx].pid = pid;
-                    ships[idx].x = x;
-                    ships[idx].y = y;
-                    ships[idx].food = food;
-                    ships[idx].gold = gold;
-                    
-                    if (strcmp(tipo, "INIT") == 0 && !ships[idx].active) {
-                        ships[idx].active = 1;
-                        active_ships_count++;
-                        printf("Barco %d listo en (%d, %d). Activos: %d\n", pid, x, y, active_ships_count);
-                    } 
-                    else if (strcmp(tipo, "MOVE") == 0) {
-                        printf(AZUL "MOVIMIENTO: " RESET "Barco %d se ha movido a (%d, %d). Comida: %d, Oro: %d\n", 
-                               pid, x, y, food, gold);
-                        // Cuando un barco se mueve, Úrsula comprueba si hay batalla
-                        check_battles(x, y);
-                    }
+                if (strcmp(tipo, "INIT") == 0 && !ships[idx].active) {
+                    ships[idx].active = 1;
+                    active_ships_count++;
+                    printf("Barco %d listo en (%d, %d). Activos: %d\n", pid, x, y, active_ships_count);
+                } 
+                else if (strcmp(tipo, "MOVE") == 0) {
+                    printf(AZUL "MOVIMIENTO: " RESET "Barco %d se ha movido a (%d, %d). Comida: %d, Oro: %d\n", 
+                           pid, x, y, food, gold);
+                    // Cuando un barco se mueve, Úrsula comprueba si hay batalla
+                    check_battles(x, y);
                 }
             }
         }
