@@ -35,7 +35,6 @@ int apocalypse_triggered = 0;
 void register_captain(pid_t pid) {
     captains[num_captains++] = pid;
     active_entities++;
-    //fprintf(stderr, "Úrsula: Capitana %d registrada.\n", pid);
 }
 
 void unregister_captain(pid_t pid) {
@@ -43,7 +42,6 @@ void unregister_captain(pid_t pid) {
         if (captains[i] == pid) {
             captains[i] = -1;
             active_entities--;
-            //fprintf(stderr, "Úrsula: Capitana %d se ha retirado.\n", pid);
             break;
         }
     }
@@ -58,7 +56,6 @@ void register_ship(pid_t pid, int x, int y, int food, int gold) {
     ships[num_ships].active = 1;
     num_ships++;
     active_entities++;
-    //fprintf(stderr, "Úrsula: Barco %d registrado en (%d, %d) en tregua.\n", pid, x, y);
 }
 
 void unregister_ship(pid_t pid) {
@@ -66,7 +63,6 @@ void unregister_ship(pid_t pid) {
         if (ships[i].pid == pid && ships[i].active) {
             ships[i].active = 0;
             active_entities--;
-            //fprintf(stderr, "Úrsula: Barco %d ha sucumbido al mar.\n", pid);
             break;
         }
     }
@@ -77,7 +73,7 @@ void trigger_apocalypse() {
     if (apocalypse_triggered) return;
     apocalypse_triggered = 1;
     fprintf(stderr, "\nÚRSULA: ¡Mi tesoro se ha acabado, el mundo ha llegado asu fin!\n");
-    // Mandar señal mortal a todas las capitanas [cite: 392]
+    // Mandar señal mortal a todas las capitanas
     for (int i = 0; i < num_captains; i++) {
         if (captains[i] > 0) {
             kill(captains[i], SIGINT); 
@@ -99,7 +95,6 @@ void handle_move(pid_t pid, int x, int y, int food, int gold) {
     }
     if (ship_idx == -1) return;
 
-    //fprintf(stderr, "Úrsula: Barco %d navega a (%d, %d)\n", pid, x, y);
 
     // 2. Buscar si hay más barcos en esa misma casilla
     int fighters[MAX_SHIPS];
@@ -110,18 +105,18 @@ void handle_move(pid_t pid, int x, int y, int food, int gold) {
         }
     }
 
-    // 3. ¡HAY PELEA! [cite: 385]
+    // 3. ¡HAY PELEA!
     if (num_fighters > 1) {
         fprintf(stderr, "\n⚔️ ¡PELEA en (%d, %d) entre %d barcos!\n", x, y, num_fighters);
         
-        // Elegir un ganador al azar [cite: 386]
+        // Elegir un ganador al azar 
         int winner_idx = rand() % num_fighters;
         int total_collected = 0;
 
         for (int i = 0; i < num_fighters; i++) {
             if (i != winner_idx) {
                 int loser = fighters[i];
-                // Mandamos el castigo por señal [cite: 387, 150]
+                // Mandamos el castigo por señal
                 kill(ships[loser].pid, SIGUSR2);
                 
                 // Calculamos cuánto oro le hemos podido robar al perdedor
@@ -148,7 +143,7 @@ void handle_move(pid_t pid, int x, int y, int food, int gold) {
         
         fprintf(stderr, "💰 Tesoro de Úrsula: %d monedas de oro.\n\n", ursula_treasure);
 
-        // ¿Se acabó el dinero? [cite: 392]
+        // ¿Se acabó el dinero?
         if (ursula_treasure ==  0) {
             trigger_apocalypse();
         }
@@ -197,7 +192,7 @@ int main(int argc, char *argv[]) {
         return 1;
     }
 
-    fprintf(stderr, "Úrsula: Despierta y escuchando en el abismo '%s'...\n", fifo_name);
+    fprintf(stderr, "Úrsula: Esperando capitanas y barcos... '%s'...\n", fifo_name);
 
     // O_RDWR evita que el read devuelva 0 cuando no hay nadie conectado
     int fd = open(fifo_name, O_RDWR);
@@ -237,6 +232,6 @@ int main(int argc, char *argv[]) {
     }
 
     close(fd);
-    fprintf(stderr, "Úrsula: El mar se ha quedado en silencio. Me voy a dormir.\n");
+    fprintf(stderr, "Ya no quedan barcos vivos. Terminando Ursula... \n");
     return 0;
 }
