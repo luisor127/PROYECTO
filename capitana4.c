@@ -199,7 +199,7 @@ int main(int argc, char *argv[]) {
                 // MODO AUTOMÁTICO (Sin tuberías)
                 sprintf(st, "%d", pasos); 
                 sprintf(ss, "%d", fleet[i].speed);
-                //execl("./ship3", "ship3", "--map", map_file, "--pos", sx, sy, "--food", sf, "--random", st, ss, NULL);
+            
                 // --- CAMBIO AQUÍ: Pasamos Úrsula si existe ---
                 if (ursula_fifo != NULL) {
                     execl("./ship3", "ship3", "--map", map_file, "--pos", sx, sy, "--food", sf, "--random", st, ss, "--ursula", ursula_fifo, NULL);
@@ -221,9 +221,7 @@ int main(int argc, char *argv[]) {
                 // Conectamos la "boca" (STDOUT) al tubo de escritura
                 dup2(pipe_s2c[1], STDOUT_FILENO);
                 close(pipe_s2c[1]);
-
-                // Ejecutamos el barco en modo --captain
-                //execl("./ship3", "ship3", "--map", map_file, "--pos", sx, sy, "--food", sf, "--captain", NULL);
+                
                 // --- CAMBIO AQUÍ: Pasamos Úrsula si existe ---
                 if (ursula_fifo != NULL) {
                     execl("./ship3", "ship3", "--map", map_file, "--pos", sx, sy, "--food", sf, "--captain", "--ursula", ursula_fifo, NULL);
@@ -358,7 +356,7 @@ int main(int argc, char *argv[]) {
                             strcmp(cmd, "exit") != 0) {
                             
                             fprintf(stderr, "ERROR, el comando que has introducido es invalido\n");
-                            continue; // ¡MAGIA! Esto aborta y evita que se imprima el número de barcos vivos abajo del todo.
+                            continue; // evita que se imprima el número de barcos vivos abajo del todo.
                         }
 
                     // Buscamos a qué índice de nuestro array corresponde esa ID
@@ -471,4 +469,4 @@ int main(int argc, char *argv[]) {
     free(fleet);
     return 0;
     } 
-}//final
+}
