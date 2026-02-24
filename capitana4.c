@@ -6,6 +6,8 @@
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <signal.h> 
+#include <fcntl.h>
+#include <sys/stat.h>
 
 #define RESET "\033[0m"
 #define ROJO "\033[31m"
@@ -33,6 +35,21 @@ ShipInfo *fleet = NULL;
 int ship_count = 0;
 int ships_alive = 0;
 
+char pipe_ursula[256] = "";
+
+void avisar_ursula_cap(const char *tipo) {
+    if (strlen(pipe_ursula) == 0) return;
+
+    char buffer[256];
+    sprintf(buffer, "%d,%s\n", getpid(), tipo);
+
+    int fd = open(pipe_ursula, O_WRONLY);
+    if (fd != -1) {
+        write(fd, buffer, strlen(buffer));
+        close(fd);
+    }
+}
+
 void handle_sigchld(int sig) {
     int status;
     pid_t pid;
@@ -59,8 +76,9 @@ void handle_sigchld(int sig) {
         }
     }
 
-    if (ships_alive <= 0) {
+	if (ships_alive <= 0) {
         fprintf(stderr, "\nCapitana: Todos los barcos han terminado. Saliendo.\n");
+        avisar_ursula_cap("END_CAPT"); // <-- AÑADIR AVISO
         exit(0); // Fuerza a la Capitana a cerrarse y devolverte la terminal
     }
 }
@@ -88,7 +106,14 @@ int main(int argc, char *argv[]) {
             ships_file = argv[++i];
         else if (strcmp(argv[i], "--random") == 0) 
             random_mode = 1;
+        else if (strcmp(argv[i], "--pipe") == 0 && i + 1 < argc)  // <-- NUEVO
+            strcpy(pipe_ursula, argv[++i]);                       // <-- NUEVO
     }
+
+    fprintf(stderr, "Captain: Capitana Amina al-Sirafi, con PID %d\n", getpid());
+    
+    avisar_ursula_cap("INIT_CAPT"); // <-- NUEVO: Avisamos a Ursula de que existimos
+    
 
     fprintf(stderr, "Captain: Capitana Amina al-Sirafi, con PID %d\n", getpid());
 
@@ -159,11 +184,12 @@ int main(int argc, char *argv[]) {
             sprintf(sy, "%d", fleet[i].y);
             sprintf(sf, "100"); 
 
-            if (random_mode) {
+if (random_mode) {
                 // MODO AUTOMÁTICO (Sin tuberías)
                 sprintf(st, "%d", pasos); 
                 sprintf(ss, "%d", fleet[i].speed);
-                execl("./ship3", "ship3", "--map", map_file, "--pos", sx, sy, "--food", sf, "--random", st, ss, NULL);
+                // NUEVO execl con pipe:
+                execl("./ship3", "ship3", "--map", map_file, "--pos", sx, sy, "--food", sf, "--random", st, ss, "--pipe", pipe_ursula, NULL);
             } else {
                 // MODO CAPITANA (Parte 4 - Con tuberías)
                 
@@ -179,8 +205,8 @@ int main(int argc, char *argv[]) {
                 dup2(pipe_s2c[1], STDOUT_FILENO);
                 close(pipe_s2c[1]);
 
-                // Ejecutamos el barco en modo --captain
-                execl("./ship3", "ship3", "--map", map_file, "--pos", sx, sy, "--food", sf, "--captain", NULL);
+                // NUEVO execl con pipe:
+                execl("./ship3", "ship3", "--map", map_file, "--pos", sx, sy, "--food", sf, "--captain", "--pipe", pipe_ursula, NULL);
             }
             
             perror("Error al hacer execl"); 
@@ -253,10 +279,10 @@ int main(int argc, char *argv[]) {
             else if (strcmp(buffer, "status") == 0) {
                 for (int i = 0; i < ship_count; i++) {
                     if (fleet[i].pid > 0) {
-                        fprintf(stderr, "Barco %d Vivo (ID: %d, PID: %d) En: (%d, %d) "AZUL "Comida: %d"RESET""AMARILLO"  Oro: %d\n"RESET, 
+                        fprintf(stderr, "Barco %d Vivo (ID: %d, PID: %d) En: (%d, %d) Comida: %d Oro: %d\n", 
                                 i+1, fleet[i].id, fleet[i].pid, fleet[i].x, fleet[i].y, fleet[i].food, fleet[i].gold);
                     } else {
-                        fprintf(stderr, "Barco %d Terminado (ID: %d, PID: %d) En: (%d, %d) "AZUL "Comida: %d"RESET""AMARILLO"  Oro: %d\n"RESET, 
+                        fprintf(stderr, "Barco %d Terminado (ID: %d, PID: %d) En: (%d, %d) Comida: %d Oro: %d\n", 
                                 i+1, fleet[i].id, -fleet[i].pid, fleet[i].x, fleet[i].y, fleet[i].food, fleet[i].gold);
                     }
                 }
@@ -291,6 +317,7 @@ int main(int argc, char *argv[]) {
                             fprintf(stderr, "ERROR, el comando que has introducido es invalido\n");
                             continue; // ¡MAGIA! Esto aborta y evita que se imprima el número de barcos vivos abajo del todo.
                         }
+					}
 
                     // Buscamos a qué índice de nuestro array corresponde esa ID
                     int idx = -1;
@@ -398,8 +425,10 @@ int main(int argc, char *argv[]) {
         }
     }
 
-    fprintf(stderr, "Capitana: Todos los barcos han terminado. Saliendo.\n");
+   	fprintf(stderr, "Capitana: Todos los barcos han terminado. Saliendo.\n");
+    avisar_ursula_cap("END_CAPT"); // <-- AÑADIR AVISO
     free(fleet);
     return 0;
-    } 
+    
+
 }//final
