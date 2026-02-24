@@ -31,7 +31,8 @@ typedef struct {
 } Ship;
 
 // Variable GLOBAL
-Ship ship; 
+Ship ship;
+int es_capitan = 0; 
 
 // Inicialización barco
 void ship_init(Map *mapa, int x, int y, int food) {
@@ -107,7 +108,11 @@ void try_move(int dx, int dy) {
     if (ship.food < 5) {
 
             printf(ROJO "NOK" RESET "\n"); 
-            ship_print(); // AÑADIDO: Para imprimir estado al fallar
+
+            if (es_capitan == 0) 
+                ship_print();  
+            
+            //ship_print(); // AÑADIDO: Para imprimir estado al fallar
             fflush(stdout); 
             return;
     }
@@ -119,7 +124,7 @@ void try_move(int dx, int dy) {
     if (!map_can_sail(ship.mapa, new_x, new_y)) {
 
             printf(ROJO "NOK" RESET "\n"); 
-            ship_print(); // Imprimes mapa al chocar igualmente, para mostrar la posición del barco.
+            //ship_print(); // Imprimes mapa al chocar igualmente, para mostrar la posición del barco.
             fflush(stdout); 
             return; 
     }
@@ -148,7 +153,8 @@ void try_move(int dx, int dy) {
 
 
     // 6. IMPRIMIR (ÉXITO)
-        map_print(ship.mapa); // Mapa primero
+        //map_print(ship.mapa); // Mapa primero
+        //ship_print();
 
         // Mensajes de eventos
         if (cell_type == 'I') 
@@ -158,10 +164,18 @@ void try_move(int dx, int dy) {
         else if (cell_type == 'P') 
 
             fprintf(stderr, "Barco %d alcanzó un " MAGENTA "PUERTO " RESET "(%d, %d),"AZUL" comida incrementada a %d.\n"RESET, ship.pid, ship.x, ship.y, ship.food);
-
-        printf(VERDE "OK" RESET "\n");
-        fflush(stdout); 
-        ship_print(); // Aquí se imprime el estado en caso de éxito
+    
+        if (es_capitan) {
+            // Modo Capitán: Mandamos los datos crudos por el tubo invisible
+            printf("OK %d %d\n", ship.food, ship.gold);
+        } else {
+            // Modo Random: Imprimimos el OK verde bonito en la terminal
+            printf(VERDE "OK" RESET "\n");
+        }
+        fflush(stdout);
+        
+        if (es_capitan == 0)
+            ship_print(); // Aquí se imprime el estado en caso de éxito
     
 }
 
@@ -335,6 +349,8 @@ int main(int argc, char *argv[]) {
 
     parse_args(argc, argv, &map_file, &pos_x, &pos_y, &food, &random_steps, &random_speed, &captain_mode);
 
+    es_capitan = captain_mode;
+
     // Ajuste de lógica de modos para la Parte 3
     if (captain_mode && random_steps != -1) {
 
@@ -356,7 +372,7 @@ int main(int argc, char *argv[]) {
         exit(1);
     }
 
-    fprintf(stderr, "\nMapa: %s.\nPosición: (%d, %d).\nComida: %d\n\n", map_file, pos_x, pos_y, food);
+    //fprintf(stderr, "\nMapa: %s.\nPosición: (%d, %d).\nComida: %d\n\n", map_file, pos_x, pos_y, food);
 
     // Carga del mapa 
     Map *mapa_ptr = map_load(map_file);
@@ -377,7 +393,7 @@ int main(int argc, char *argv[]) {
         exit(1);
     }
     
-    fprintf(stderr, "PID del barco: %d.\nModo: %s\n\n", ship.pid, captain_mode ? "CAPITAN" : "RANDOM");
+    //fprintf(stderr, "PID del barco: %d.\nModo: %s\n\n", ship.pid, captain_mode ? "CAPITAN" : "RANDOM");
 
     signal(SIGALRM, handle_signal);
     signal(SIGUSR1, handle_signal);
@@ -396,7 +412,7 @@ int main(int argc, char *argv[]) {
         char c;           // Variable auxiliar para leer 1 byte
         int i = 0;        // Contador del buffer
 
-        fprintf(stderr, "Esperando comandos: {up, down, left, right, exit}\n");
+        //fprintf(stderr, "Esperando comandos: {up, down, left, right, exit}\n");
 
         // Leemos 1 byte del descriptor 0 (Entrada Estándar)
         while (read(STDIN_FILENO, &c, 1) > 0) {
@@ -406,7 +422,7 @@ int main(int argc, char *argv[]) {
                 // Si encontramos un ENTER, procesamos el comando acumulado
                 buffer[i] = '\0'; // Cerramos el string
                 i = 0;            // Reiniciamos el contador para la próxima
-        
+
                 if (strcasecmp(buffer, "up") == 0)         try_move(0, -1);
                 else if (strcasecmp(buffer, "down") == 0)  try_move(0, 1);
                 else if (strcasecmp(buffer, "left") == 0)  try_move(-1, 0);
@@ -418,7 +434,10 @@ int main(int argc, char *argv[]) {
 
                 } else {
 
-                    fprintf(stderr, ROJO "ERROR, comando '%s' inválido.\n" RESET "Por favor, introduzca un comando válido: {up, down, left, right, exit}\n", buffer);
+                    //fprintf(stderr, ROJO "ERROR, comando '%s' inválido.\n" RESET "Por favor, introduzca un comando válido: {up, down, left, right, exit}\n", buffer);
+                    //printf(ROJO "NOK\n" RESET); 
+                    printf("INVALID\n");
+                    fflush(stdout); 
                     continue;
                 }
 
@@ -463,4 +482,4 @@ int main(int argc, char *argv[]) {
     map_remove_ship(ship.mapa, ship.x, ship.y);
     map_destroy(ship.mapa);
     return ship.gold;
-}
+} //final
