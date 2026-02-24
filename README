@@ -1,0 +1,36 @@
+# PRÁCTICA: Arquitectura de Sistemas II - Juego del Mar
+
+## Autores:
+- Carlos Martínez Aguilar
+- Verónica Ventura McArdle
+- Luis Ortiz González
+
+## 1. Cómo compilar el proyecto:
+Hemos incluido un archivo Makefile para automatizar la compilación. 
+Para compilar todos los programas a la vez (Úrsula, Capitana y Barco), abre la terminal en la carpeta del proyecto y ejecuta el comando:
+
+$ make
+
+Para borrar los ejecutables antiguos, ejecuta:
+$ make clean
+
+## 2. Cómo ejecutar y probar el proyecto:
+Para simular correctamente la práctica, hay que usar varias terminales, una para Úrsula, y una adicional por cada capitana a usar, ya que los procesos se comunican a través de tuberías FIFO.
+
+PASO 1 (Llamamos a Úrsula):
+Abre la primera terminal y ejecuta a Úrsula pasándole el nombre de la tubería:
+$ ./ursula mar
+
+PASO 2 (Lanzamos una flota manual):
+Abre una segunda terminal y lanza a la Capitana conectándola a la misma tubería:
+$ ./capitana4 --ursula mar
+
+PASO 3 (Lanzar una segunda flota manual):
+Para lanzar la segunda flota y que haya conflictos entre flotas, abre una terminal y lanza otra capitana con otro archivo de barcos.
+$ ./capitana4 --ursula mar --ships ships2.txt
+
+## 3. Notas adicionales:
+- El código maneja correctamente colisiones entre distintas flotas a través de Úrsula.
+- Se puede ejecutar capitana4 de forma automática, con el comando ./capitana4 --ursula mar y añadiendo --random. (./capitana4 --ursula mar --random)
+- Las Capitanas evitan las colisiones de los barcos de su propia flota.
+- Las peleas entre barcos de distintas flotas y el manejo del tesoro de Úrsula, funcionan correctamente.
