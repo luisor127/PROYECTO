@@ -476,4 +476,4 @@ int main(int argc, char *argv[]) {
     map_remove_ship(ship.mapa, ship.x, ship.y);
     map_destroy(ship.mapa);
     return ship.gold;
-}
+} //final
