@@ -8,11 +8,20 @@
 #include <errno.h>
 #include <time.h>
 
+#define RESET "\033[0m"
+#define ROJO "\033[31m"
+#define VERDE "\033[32m"
+#define AMARILLO "\033[33m"
+#define AZUL "\033[34m"
+#define NARANJA "\033[38;5;208m"
+#define MAGENTA "\033[35m"
+
+
 #define MAX_BUFFER 256
 #define MAX_SHIPS 100
 #define MAX_CAPTAINS 20
 
-// La libreta de Úrsula
+// Estructura de Úrsula
 typedef struct {
     pid_t pid;
     int x;
@@ -27,7 +36,7 @@ pid_t captains[MAX_CAPTAINS];
 
 int num_ships = 0;
 int num_captains = 0;
-int active_entities = 0; // Para saber cuándo cerrar el chiringuito
+int active_entities = 0;
 int ursula_treasure = 100; // Tesoro inicial 
 int apocalypse_triggered = 0;
 
@@ -73,7 +82,7 @@ void trigger_apocalypse() {
     if (apocalypse_triggered) return;
     apocalypse_triggered = 1;
     fprintf(stderr, "\nÚRSULA: ¡Mi tesoro se ha acabado, el mundo ha llegado asu fin!\n");
-    // Mandar señal mortal a todas las capitanas
+    // Mandar señal de muerte a todas las capitanas
     for (int i = 0; i < num_captains; i++) {
         if (captains[i] > 0) {
             kill(captains[i], SIGINT); 
@@ -107,7 +116,7 @@ void handle_move(pid_t pid, int x, int y, int food, int gold) {
 
     // 3. ¡HAY PELEA!
     if (num_fighters > 1) {
-        fprintf(stderr, "\n⚔️ ¡PELEA en (%d, %d) entre %d barcos!\n", x, y, num_fighters);
+        fprintf(stderr, ROJO"\n¡PELEA en (%d, %d) entre %d barcos!\n"RESET, x, y, num_fighters);
         
         // Elegir un ganador al azar 
         int winner_idx = rand() % num_fighters;
@@ -123,25 +132,25 @@ void handle_move(pid_t pid, int x, int y, int food, int gold) {
                 int gold_taken = (ships[loser].gold >= 10) ? 10 : ships[loser].gold;
                 total_collected += gold_taken;
                 
-                // Actualizamos la libreta de Úrsula temporalmente
+                // Actualizamos la estructura de Úrsula temporalmente
                 ships[loser].gold -= gold_taken;
             }
         }
 
-        // Mandamos el premio al ganador [cite: 387, 149]
+        // Mandamos el premio al ganador
         kill(ships[fighters[winner_idx]].pid, SIGUSR1);
         ships[fighters[winner_idx]].gold += 10;
 
-        fprintf(stderr, "👑 Ganador: Barco %d.\n", ships[fighters[winner_idx]].pid);
+        fprintf(stderr, VERDE"Ganador: Barco %d.\n"RESET, ships[fighters[winner_idx]].pid);
 
-        // Ajustar el tesoro de Úrsula [cite: 389, 390]
+        // Ajustar el tesoro de Úrsula
         if (total_collected >= 10) {
             ursula_treasure += (total_collected - 10);
         } else {
             ursula_treasure -= (10 - total_collected);
         }
         
-        fprintf(stderr, "💰 Tesoro de Úrsula: %d monedas de oro.\n\n", ursula_treasure);
+        fprintf(stderr, AMARILLO"Tesoro de Úrsula: %d monedas de oro.\n\n"RESET, ursula_treasure);
 
         // ¿Se acabó el dinero?
         if (ursula_treasure ==  0) {
@@ -184,7 +193,7 @@ int main(int argc, char *argv[]) {
         return 1;
     }
 
-    srand(time(NULL)); // Inicializar azar
+    srand(time(NULL)); // Inicializar al azar
     char *fifo_name = argv[1];
 
     if (mkfifo(fifo_name, 0666) == -1 && errno != EEXIST) {
@@ -194,7 +203,6 @@ int main(int argc, char *argv[]) {
 
     fprintf(stderr, "Úrsula: Esperando capitanas y barcos... '%s'...\n", fifo_name);
 
-    // O_RDWR evita que el read devuelva 0 cuando no hay nadie conectado
     int fd = open(fifo_name, O_RDWR);
     if (fd == -1) {
         perror("Error al abrir la tubería");
@@ -210,7 +218,7 @@ int main(int argc, char *argv[]) {
         if (c == '\n') {
             buffer[i] = '\0';
             
-            // --- 1. RESTAURADO: Imprimir exactamente lo que recibe ---
+            // --- Imprimir lo que recibe ---
             fprintf(stderr, "%s\n", buffer);
             
             // --- 2. Hacemos una copia para que strtok no rompa el texto original ---
