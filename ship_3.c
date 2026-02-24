@@ -8,6 +8,8 @@
 #include <sys/types.h>
 #include <signal.h>
 #include "map.h"
+#include <fcntl.h>
+#include <sys/stat.h>
 
 #define RESET "\033[0m"
 #define ROJO "\033[31m"
@@ -34,6 +36,11 @@ typedef struct {
 Ship ship;
 int es_capitan = 0; 
 
+
+
+char pipe_ursula[256] = ""; // Aquí guardaremos el nombre del pipe
+void avisar_ursula(const char *tipo);
+
 // Inicialización barco
 void ship_init(Map *mapa, int x, int y, int food) {
 
@@ -44,6 +51,7 @@ void ship_init(Map *mapa, int x, int y, int food) {
     ship.gold = 0;
     ship.pid = getpid();
     map_set_ship(ship.mapa, ship.x, ship.y);
+	avisar_ursula("INIT"); // <--- AÑADIR ESTA LÍNEA AQUÍ
 }
 
 void ship_print() {
@@ -84,18 +92,18 @@ void handle_signal(int sig) {
             break;
 
         case SIGINT:
-        
             fprintf(stderr, "\n" ROJO "Terminando todos los procesos..." RESET "\n");
-            map_remove_ship(ship.mapa, ship.x, ship.y); // Borramos el barco del mapa
-            map_destroy(ship.mapa);                     // Liberamos la memoria
-            exit(ship.gold);                            // Salimos del programa
+            map_remove_ship(ship.mapa, ship.x, ship.y); 
+            map_destroy(ship.mapa);                     
+            avisar_ursula("TERMINATE"); // <--- AÑADIR AQUÍ
+            exit(ship.gold);                            
             break;    
             
         case SIGQUIT:
-
             fprintf(stderr, "Barco %d (SIGQUIT): Terminando con oro %d.\n", ship.pid, ship.gold);
             map_remove_ship(ship.mapa, ship.x, ship.y);
             map_destroy(ship.mapa);
+            avisar_ursula("TERMINATE"); // <--- AÑADIR AQUÍ
             exit(ship.gold);
             break;
     }
@@ -140,7 +148,7 @@ void try_move(int dx, int dy) {
 
     map_set_ship(ship.mapa, ship.x, ship.y);    // Colocar en la nueva posición
     ship.food -= 5;
-
+	avisar_ursula("MOVE"); // <--- AÑADIR ESTA LÍNEA AQUÍ
 
     // 5. Lógica de premios
     if (cell_type == 'I') 
@@ -154,7 +162,7 @@ void try_move(int dx, int dy) {
 
     // 6. IMPRIMIR (ÉXITO)
         //map_print(ship.mapa); // Mapa primero
-        //ship_print();
+        ship_print();
 
         // Mensajes de eventos
         if (cell_type == 'I') 
@@ -165,13 +173,7 @@ void try_move(int dx, int dy) {
 
             fprintf(stderr, "Barco %d alcanzó un " MAGENTA "PUERTO " RESET "(%d, %d),"AZUL" comida incrementada a %d.\n"RESET, ship.pid, ship.x, ship.y, ship.food);
     
-        if (es_capitan) {
-            // Modo Capitán: Mandamos los datos crudos por el tubo invisible
-            printf("OK %d %d\n", ship.food, ship.gold);
-        } else {
-            // Modo Random: Imprimimos el OK verde bonito en la terminal
-            printf(VERDE "OK" RESET "\n");
-        }
+        printf("OK %d %d\n", ship.food, ship.gold);
         fflush(stdout);
         
         if (es_capitan == 0)
@@ -319,10 +321,20 @@ static void parse_args(int argc, char *argv[], char **map_file, int *pos_x, int 
             }
         }
         
-        else if (strcmp(argv[i], "--captain") == 0) {
+       else if (strcmp(argv[i], "--captain") == 0) {
 
             *captain_mode = 1;
         } 
+        
+        // --- AÑADIR AQUÍ EL BLOQUE PARA EL PIPE ---
+        else if (strcmp(argv[i], "--pipe") == 0) {
+            if (i + 1 >= argc || strncmp(argv[i+1], "--", 2) == 0) {
+                fprintf(stderr, ROJO "Error: '--pipe' requiere un nombre de tubería." RESET "\n");
+                errores = 1;
+            } else {
+                strcpy(pipe_ursula, argv[++i]);
+            }
+        }
 
         else {
 
@@ -336,6 +348,25 @@ static void parse_args(int argc, char *argv[], char **map_file, int *pos_x, int 
 
         fprintf(stderr, AMARILLO "\nCorrige los errores anteriores para ejecutar el programa." RESET "\n");
         exit(1);
+    }
+}
+
+void avisar_ursula(const char *tipo) {
+    if (strlen(pipe_ursula) == 0) return; // Si no hay pipe, no hacemos nada
+
+    char buffer[256];
+    if (strcmp(tipo, "TERMINATE") == 0) {
+        sprintf(buffer, "%d,TERMINATE\n", ship.pid);
+    } else {
+        // Sirve para INIT y MOVE
+        sprintf(buffer, "%d,%s,%d,%d,%d,%d\n", ship.pid, tipo, ship.x, ship.y, ship.food, ship.gold);
+    }
+
+    // Abrimos, escribimos y cerramos
+    int fd = open(pipe_ursula, O_WRONLY);
+    if (fd != -1) {
+        write(fd, buffer, strlen(buffer));
+        close(fd);
     }
 }
 
@@ -481,5 +512,6 @@ int main(int argc, char *argv[]) {
     
     map_remove_ship(ship.mapa, ship.x, ship.y);
     map_destroy(ship.mapa);
+	avisar_ursula("TERMINATE"); // <--- AÑADIR AQUÍ
     return ship.gold;
 } //final
