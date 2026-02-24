@@ -8,6 +8,8 @@
 #include <sys/types.h>
 #include <signal.h>
 #include "map.h"
+#include <fcntl.h>
+#include <sys/stat.h>
 
 #define RESET "\033[0m"
 #define ROJO "\033[31m"
@@ -31,7 +33,9 @@ typedef struct {
 } Ship;
 
 // Variable GLOBAL
-Ship ship; 
+Ship ship;
+int es_capitan = 0; 
+int ursula_fd = -1;
 
 // Inicialización barco
 void ship_init(Map *mapa, int x, int y, int food) {
@@ -49,6 +53,17 @@ void ship_print() {
 
     fprintf(stderr, "Barco %d en (%d, %d) con "AZUL"%d de comida"RESET" y "AMARILLO"%d de oro.\n"RESET, 
             ship.pid, ship.x, ship.y, ship.food, ship.gold);
+}
+
+// --- NUEVO: Función para avisar a Úrsula de que morimos ---
+void avisar_ursula_terminacion() {
+    if (ursula_fd != -1) {
+        char msg[256];
+        sprintf(msg, "%d, TERMINATE\n", ship.pid);
+        write(ursula_fd, msg, strlen(msg));
+        close(ursula_fd);
+        ursula_fd = -1; // Lo ponemos a -1 para no mandarlo dos veces
+    }
 }
 
 // Manejador de señales
@@ -86,7 +101,8 @@ void handle_signal(int sig) {
         
             fprintf(stderr, "\n" ROJO "Terminando todos los procesos..." RESET "\n");
             map_remove_ship(ship.mapa, ship.x, ship.y); // Borramos el barco del mapa
-            map_destroy(ship.mapa);                     // Liberamos la memoria
+            map_destroy(ship.mapa);  
+            avisar_ursula_terminacion();                   // Liberamos la memoria
             exit(ship.gold);                            // Salimos del programa
             break;    
             
@@ -95,6 +111,7 @@ void handle_signal(int sig) {
             fprintf(stderr, "Barco %d (SIGQUIT): Terminando con oro %d.\n", ship.pid, ship.gold);
             map_remove_ship(ship.mapa, ship.x, ship.y);
             map_destroy(ship.mapa);
+            avisar_ursula_terminacion();
             exit(ship.gold);
             break;
     }
@@ -107,7 +124,11 @@ void try_move(int dx, int dy) {
     if (ship.food < 5) {
 
             printf(ROJO "NOK" RESET "\n"); 
-            ship_print(); // AÑADIDO: Para imprimir estado al fallar
+
+            if (es_capitan == 0) 
+                ship_print();  
+            
+            //ship_print(); // AÑADIDO: Para imprimir estado al fallar
             fflush(stdout); 
             return;
     }
@@ -119,7 +140,7 @@ void try_move(int dx, int dy) {
     if (!map_can_sail(ship.mapa, new_x, new_y)) {
 
             printf(ROJO "NOK" RESET "\n"); 
-            ship_print(); // Imprimes mapa al chocar igualmente, para mostrar la posición del barco.
+            //ship_print(); // Imprimes mapa al chocar igualmente, para mostrar la posición del barco.
             fflush(stdout); 
             return; 
     }
@@ -148,7 +169,8 @@ void try_move(int dx, int dy) {
 
 
     // 6. IMPRIMIR (ÉXITO)
-        map_print(ship.mapa); // Mapa primero
+        //map_print(ship.mapa); // Mapa primero
+        //ship_print();
 
         // Mensajes de eventos
         if (cell_type == 'I') 
@@ -158,10 +180,26 @@ void try_move(int dx, int dy) {
         else if (cell_type == 'P') 
 
             fprintf(stderr, "Barco %d alcanzó un " MAGENTA "PUERTO " RESET "(%d, %d),"AZUL" comida incrementada a %d.\n"RESET, ship.pid, ship.x, ship.y, ship.food);
+    
+        if (es_capitan) {
+            // Modo Capitán: Mandamos los datos crudos por el tubo invisible
+            printf("OK %d %d\n", ship.food, ship.gold);
+        } else {
+            // Modo Random: Imprimimos el OK verde bonito en la terminal
+            printf(VERDE "OK" RESET "\n");
+        }
+        fflush(stdout);
 
-        printf(VERDE "OK" RESET "\n");
-        fflush(stdout); 
-        ship_print(); // Aquí se imprime el estado en caso de éxito
+        // --- NUEVO: Informar a Úrsula del movimiento ---
+        if (ursula_fd != -1) {
+            char msg[256];
+            sprintf(msg, "%d, MOVE, %d, %d, %d, %d\n", ship.pid, ship.x, ship.y, ship.food, ship.gold);
+            write(ursula_fd, msg, strlen(msg));
+        }
+        // ----------------------------------------------
+        
+        if (es_capitan == 0)
+            ship_print(); // Aquí se imprime el estado en caso de éxito
     
 }
 
@@ -174,7 +212,7 @@ void move_randomly_step() {
 }
 
 // Función para parsear argumentos 
-static void parse_args(int argc, char *argv[], char **map_file, int *pos_x, int *pos_y, int *food, int *random_steps, int *random_speed, int *captain_mode) {
+static void parse_args(int argc, char *argv[], char **map_file, int *pos_x, int *pos_y, int *food, int *random_steps, int *random_speed, int *captain_mode, char **ursula_fifo) {
 
     int errores = 0;
 
@@ -310,6 +348,17 @@ static void parse_args(int argc, char *argv[], char **map_file, int *pos_x, int 
             *captain_mode = 1;
         } 
 
+        // --- NUEVO: Leer argumento de Úrsula ---
+        else if (strcmp(argv[i], "--ursula") == 0) {
+            if (i + 1 < argc && strncmp(argv[i+1], "--", 2) != 0) {
+                *ursula_fifo = argv[++i];
+            } else {
+                fprintf(stderr, ROJO "Error: '--ursula' requiere el nombre de la tubería." RESET "\n");
+                errores = 1;
+            }
+        }
+        // ---------------------------------------
+
         else {
 
             fprintf(stderr, ROJO "Error, argumento '%s' no reconocido."RESET "\n", argv[i]);
@@ -332,8 +381,11 @@ int main(int argc, char *argv[]) {
     int food = 100;
     int random_steps = -1, random_speed = 1;
     int captain_mode = 0;
+    char *ursula_fifo = NULL;
 
-    parse_args(argc, argv, &map_file, &pos_x, &pos_y, &food, &random_steps, &random_speed, &captain_mode);
+    parse_args(argc, argv, &map_file, &pos_x, &pos_y, &food, &random_steps, &random_speed, &captain_mode, &ursula_fifo);
+
+    es_capitan = captain_mode;
 
     // Ajuste de lógica de modos para la Parte 3
     if (captain_mode && random_steps != -1) {
@@ -356,7 +408,7 @@ int main(int argc, char *argv[]) {
         exit(1);
     }
 
-    fprintf(stderr, "\nMapa: %s.\nPosición: (%d, %d).\nComida: %d\n\n", map_file, pos_x, pos_y, food);
+    //fprintf(stderr, "\nMapa: %s.\nPosición: (%d, %d).\nComida: %d\n\n", map_file, pos_x, pos_y, food);
 
     // Carga del mapa 
     Map *mapa_ptr = map_load(map_file);
@@ -370,6 +422,17 @@ int main(int argc, char *argv[]) {
 
         ship_init(mapa_ptr, pos_x, pos_y, food);
 
+        // --- NUEVO: Conectar con Úrsula y mandar INIT ---
+        if (ursula_fifo != NULL) {
+            ursula_fd = open(ursula_fifo, O_WRONLY);
+            if (ursula_fd != -1) {
+                char msg[256];
+                sprintf(msg, "%d, INIT, %d, %d, %d, %d\n", ship.pid, ship.x, ship.y, ship.food, ship.gold);
+                write(ursula_fd, msg, strlen(msg));
+            }
+        }
+        // ------------------------------------------------
+
     } else {
 
         fprintf(stderr, "Posición inicial inválida (%d,%d).\n", pos_x, pos_y);
@@ -377,7 +440,7 @@ int main(int argc, char *argv[]) {
         exit(1);
     }
     
-    fprintf(stderr, "PID del barco: %d.\nModo: %s\n\n", ship.pid, captain_mode ? "CAPITAN" : "RANDOM");
+    //fprintf(stderr, "PID del barco: %d.\nModo: %s\n\n", ship.pid, captain_mode ? "CAPITAN" : "RANDOM");
 
     signal(SIGALRM, handle_signal);
     signal(SIGUSR1, handle_signal);
@@ -396,7 +459,7 @@ int main(int argc, char *argv[]) {
         char c;           // Variable auxiliar para leer 1 byte
         int i = 0;        // Contador del buffer
 
-        fprintf(stderr, "Esperando comandos: {up, down, left, right, exit}\n");
+        //fprintf(stderr, "Esperando comandos: {up, down, left, right, exit}\n");
 
         // Leemos 1 byte del descriptor 0 (Entrada Estándar)
         while (read(STDIN_FILENO, &c, 1) > 0) {
@@ -416,9 +479,23 @@ int main(int argc, char *argv[]) {
                     fprintf(stderr, "Barco %d saliendo con "AMARILLO"%d de oro.\n"RESET, ship.pid, ship.gold);
                     break;
 
-                } else {
+                } 
+                
+                // --- NUEVO: Comando oculto para sincronizar con la Capitana ---
+                else if (strcasecmp(buffer, "status") == 0) {
+                    if (es_capitan) {
+                        printf("OK %d %d\n", ship.food, ship.gold);
+                        fflush(stdout);
+                    }
+                    continue;
+                }
 
-                    fprintf(stderr, ROJO "ERROR, comando '%s' inválido.\n" RESET "Por favor, introduzca un comando válido: {up, down, left, right, exit}\n", buffer);
+                else {
+
+                    //fprintf(stderr, ROJO "ERROR, comando '%s' inválido.\n" RESET "Por favor, introduzca un comando válido: {up, down, left, right, exit}\n", buffer);
+                    //printf(ROJO "NOK\n" RESET); 
+                    printf("INVALID\n");
+                    fflush(stdout); 
                     continue;
                 }
 
@@ -462,5 +539,6 @@ int main(int argc, char *argv[]) {
     
     map_remove_ship(ship.mapa, ship.x, ship.y);
     map_destroy(ship.mapa);
+    avisar_ursula_terminacion();
     return ship.gold;
-}
+} //final
