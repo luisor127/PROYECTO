@@ -42,7 +42,7 @@ void handle_sigchld(int sig) {
     int status;
     pid_t pid;
 
-    // waitpid con WNOHANG recoge al hijo sin bloquear a la Capitana
+    // Recoge al hijo sin bloquear a la Capitana
     while ((pid = waitpid(-1, &status, WNOHANG)) > 0) {
 
         ships_alive--;
@@ -66,7 +66,7 @@ void handle_sigchld(int sig) {
 
     if (ships_alive <= 0) {
 
-        // --- NUEVO: Despedirse de Úrsula ---
+        // --- Despedirse de Úrsula ---
         if (ursula_fd != -1) {
             char msg[256];
             sprintf(msg, "%d, END_CAPT\n", getpid());
@@ -79,7 +79,7 @@ void handle_sigchld(int sig) {
     }
 }
 
-// [CAMBIO 3] Manejador de SIGINT: Se activa con Ctrl+C
+// Manejador de SIGINT: Se activa con Ctrl+C
 void handle_sigint(int sig) {
     fprintf(stderr, "\nCapitana: Recibido SIGINT. Finalizando flota...\n");
     for (int i = 0; i < ship_count; i++) {
@@ -112,7 +112,7 @@ int main(int argc, char *argv[]) {
 
     fprintf(stderr, "Captain: Capitana Amina al-Sirafi, con PID %d\n", getpid());
 
-    // --- LECTURA DE FICHERO (Tu lógica de getline/strtol) ---
+    // --- LECTURA DE FICHERO ---
     FILE *f = fopen(ships_file, "r");
     if (!f) { perror("Error abriendo fichero"); return 1; }
 
@@ -144,18 +144,18 @@ int main(int argc, char *argv[]) {
     free(line);
     fclose(f);
 
-    // [CAMBIO 4] Registrar señales
+    // Registrar señales
     signal(SIGINT, handle_sigint);
     signal(SIGCHLD, handle_sigchld);
 
-    // --- NUEVO ESCUDO PARA LA CAPITANA ---
-    signal(SIGTSTP, SIG_IGN); // Ignora Ctrl+Z (Señal para que los barcos impriman info)
-    signal(SIGQUIT, SIG_IGN); // Ignora Ctrl+\ (Señal de Core Dump, no queremos crashear)
+    // --- NUEVO PARA LA CAPITANA ---
+    signal(SIGTSTP, SIG_IGN); 
+    signal(SIGQUIT, SIG_IGN); 
 
 
     // --- CONECTAR CON ÚRSULA ---
     if (ursula_fifo != NULL) {
-        // Abrimos la tubería en modo ESCRITURA (O_WRONLY)
+        // Abrimos la tubería en modo ESCRITURA
         ursula_fd = open(ursula_fifo, O_WRONLY);
         if (ursula_fd == -1) {
             perror("Error: No se pudo conectar con Úrsula. ¿Está despierta?");
@@ -176,7 +176,7 @@ int main(int argc, char *argv[]) {
         int pipe_c2s[2]; // Capitana -> Barco
         int pipe_s2c[2]; // Barco -> Capitana
         
-        // Solo las creamos si NO estamos en modo random (Parte 4)
+        // Solo las creamos si NO estamos en modo random
         if (!random_mode) {
             if (pipe(pipe_c2s) == -1 || pipe(pipe_s2c) == -1) {
                 perror("Error creando tuberías");
@@ -187,9 +187,7 @@ int main(int argc, char *argv[]) {
         pid_t pid = fork();
 
         if (pid == 0) {
-            // ==========================================
-            // CÓDIGO DEL HIJO (EL BARCO)
-            // ==========================================
+           
             char sx[12], sy[12], sf[12], st[12], ss[12];
             sprintf(sx, "%d", fleet[i].x); 
             sprintf(sy, "%d", fleet[i].y);
@@ -200,7 +198,7 @@ int main(int argc, char *argv[]) {
                 sprintf(st, "%d", pasos); 
                 sprintf(ss, "%d", fleet[i].speed);
             
-                // --- CAMBIO AQUÍ: Pasamos Úrsula si existe ---
+                // --- Pasamos Úrsula si existe ---
                 if (ursula_fifo != NULL) {
                     execl("./ship3", "ship3", "--map", map_file, "--pos", sx, sy, "--food", sf, "--random", st, ss, "--ursula", ursula_fifo, NULL);
                 } else {
@@ -208,21 +206,21 @@ int main(int argc, char *argv[]) {
                 }
 
             } else {
-                // MODO CAPITANA (Parte 4 - Con tuberías)
+                // MODO CAPITANA
                 
                 // Cerramos los extremos del tubo que el barco no va a usar
                 close(pipe_c2s[1]); // El barco NO escribe en el tubo de ida
                 close(pipe_s2c[0]); // El barco NO lee del tubo de vuelta
 
-                // Conectamos la "oreja" (STDIN) al tubo de lectura
+                // Conectamos al tubo de lectura
                 dup2(pipe_c2s[0], STDIN_FILENO);
                 close(pipe_c2s[0]); 
 
-                // Conectamos la "boca" (STDOUT) al tubo de escritura
+                // Conectamos al tubo de escritura
                 dup2(pipe_s2c[1], STDOUT_FILENO);
                 close(pipe_s2c[1]);
                 
-                // --- CAMBIO AQUÍ: Pasamos Úrsula si existe ---
+                // --- Pasamos Úrsula si existe ---
                 if (ursula_fifo != NULL) {
                     execl("./ship3", "ship3", "--map", map_file, "--pos", sx, sy, "--food", sf, "--captain", "--ursula", ursula_fifo, NULL);
                 } else {
@@ -234,9 +232,7 @@ int main(int argc, char *argv[]) {
             exit(1);
         
         } else {
-            // ==========================================
-            // CÓDIGO DEL PADRE (LA CAPITANA)
-            // ==========================================
+            
             fleet[i].pid = pid;
             ships_alive++;
 
@@ -252,10 +248,10 @@ int main(int argc, char *argv[]) {
         }
     }
 
-    // [CAMBIO 5] Bucle de espera no bloqueante
+    // Bucle de espera no bloqueante
     fprintf(stderr, "Capitana: Flota lanzada. Esperando eventos...\n");
 
-// --- NUEVO: IMPRIMIR ESTADO INICIAL ---
+// --- IMPRIMIR ESTADO INICIAL ---
     fprintf(stderr, "\n=== ESTADO INICIAL DE LA FLOTA ===\n");
     for (int j = 0; j < ship_count; j++) {
         fprintf(stderr, "Barco %d Vivo (ID: %d, PID: %d) En: (%d, %d) Comida: %d Oro: %d\n", 
@@ -264,39 +260,39 @@ int main(int argc, char *argv[]) {
     fprintf(stderr, "Número de barcos vivos: %d\n", ships_alive);
     fprintf(stderr, "==================================\n");
 
-   // [CAMBIO 5] Bucle principal de la Capitana
+   // Bucle principald e la Capitana
     if (random_mode) {
-        // MODO AUTOMÁTICO: Se echa a dormir como en la Parte 1
+        // MODO AUTOMÁTICO
         fprintf(stderr, "Capitana: Flota lanzada en modo automático. Esperando eventos...\n");
         while (ships_alive > 0) {
             pause(); 
         }
     } else {
-        // MODO INTERACTIVO (Parte 4)
+        // MODO CAPITAN
         char buffer[256];
         
         while (ships_alive > 0) {
             fprintf(stderr, "\nIntroducir comando [exit | status | (Num, up/down/right/left/exit)]:\n> ");
             
-            // Leemos del teclado (la Capitana ya NO duerme)
+            // Leemos del teclado
             if (fgets(buffer, sizeof(buffer), stdin) == NULL) break;
             
             // Limpiamos el salto de línea que mete el Enter
             buffer[strcspn(buffer, "\n")] = 0; 
             if (strlen(buffer) == 0) continue; 
             
-            // --- COMANDO 1: EXIT GENERAL ---
+            // --- EXIT GENERAL ---
             if (strcmp(buffer, "exit") == 0) {
                 fprintf(stderr, "Saliendo y terminando todos los barcos.\n");
                 for (int i = 0; i < ship_count; i++) {
                     if (fleet[i].pid > 0) {
-                        kill(fleet[i].pid, SIGQUIT); // Misil a todos
+                        kill(fleet[i].pid, SIGQUIT); // Matamos a todos
                     }
                 }
                 while (ships_alive > 0) { pause(); } // Esperamos a que mueran
                 break;
             } 
-            // --- COMANDO 2: STATUS ---
+            // --- STATUS ---
             else if (strcmp(buffer, "status") == 0) {
                 for (int i = 0; i < ship_count; i++) {
                     if (fleet[i].pid > 0) {
@@ -318,23 +314,23 @@ int main(int argc, char *argv[]) {
                             }
                         }
                         
-                        // 3. Imprimimos los datos 100% reales
+                        // 3. Imprimimos los datos
                         fprintf(stderr, "Barco %d Vivo (ID: %d, PID: %d) En: (%d, %d) "AZUL "Comida: %d"RESET""AMARILLO"  Oro: %d\n"RESET, 
                                 i+1, fleet[i].id, fleet[i].pid, fleet[i].x, fleet[i].y, fleet[i].food, fleet[i].gold);
                     } else {
-                        // Si está muerto, simplemente imprimimos lo último que supimos
+                        // Si está muerto, imprimimos lo último que supimos
                         fprintf(stderr, "Barco %d Terminado (ID: %d, PID: %d) En: (%d, %d) "AZUL "Comida: %d"RESET""AMARILLO"  Oro: %d\n"RESET, 
                                 i+1, fleet[i].id, -fleet[i].pid, fleet[i].x, fleet[i].y, fleet[i].food, fleet[i].gold);
                     }
                 }
             }
     
-            // --- COMANDO 3: <ID> <ACCIÓN> ---
+            // --- <ID> <ACCIÓN> ---
             else {
                 int target_id;
-                char cmd[50] = {0}; // ¡Mantenemos tu array intacto!
+                char cmd[50] = {0};
                 
-                // 1. Extraemos el número de forma segura
+                // 1. Cogemos el número
                 char *endptr;
                 target_id = (int)strtol(buffer, &endptr, 10);
                 
@@ -346,10 +342,10 @@ int main(int argc, char *argv[]) {
                         endptr++;
                     }
                     
-                    // 3. Si queda texto, lo metemos en tu array 'cmd'
+                    // 3. Si queda texto, lo metemos en el array 'cmd'
                     if (*endptr != '\0') {
                         strncpy(cmd, endptr, sizeof(cmd) - 1);
-                        cmd[sizeof(cmd) - 1] = '\0'; // Cierre de seguridad
+                        cmd[sizeof(cmd) - 1] = '\0'; // Cierre 
 
                         if (strcmp(cmd, "up") != 0 && strcmp(cmd, "down") != 0 && 
                             strcmp(cmd, "left") != 0 && strcmp(cmd, "right") != 0 && 
@@ -406,17 +402,17 @@ int main(int argc, char *argv[]) {
 
                     // --- LEER RESPUESTA (OK/NOK) ---
                     if (strcmp(cmd, "exit") != 0) {
-                        char respuesta[4096] = {0}; // Cubo gigante para el mapa y colores
+                        char respuesta[4096] = {0};
                         int found_response = 0;
                         
-                        // Leemos sin parar hasta encontrar la respuesta
+                        // Leemos hasta encontrar la respuesta
                         while (!found_response) {
                             char chunk[256];
                             int bytes = read(fleet[idx].fd_read, chunk, sizeof(chunk) - 1);
                             
                             if (bytes > 0) {
                                 chunk[bytes] = '\0';
-                                strcat(respuesta, chunk); // Vamos juntando los trozos
+                                strcat(respuesta, chunk); 
                                 
                                 // Buscamos si el barco gritó NOK (chocó o no hay comida)
                                 if (strstr(respuesta, "NOK") != NULL) {
@@ -431,7 +427,6 @@ int main(int argc, char *argv[]) {
                                 }
 
                                 // Buscamos si el barco gritó OK (éxito) 
-
                                 else if (strstr(respuesta, "OK") != NULL) {
                                     // 1. Actualizamos coordenadas
                                     fleet[idx].x = nx;
@@ -441,7 +436,7 @@ int main(int argc, char *argv[]) {
                                     char *ok_ptr = strstr(respuesta, "OK");
                                     ok_ptr += 2; // Saltamos la 'O' y la 'K' para leer los números
                                     
-                                    // 3. Extraemos la comida y el oro reales usando strtol
+                                    // 3. Cogemos la comida y el oro reales
                                     char *endptr;
                                     fleet[idx].food = (int)strtol(ok_ptr, &endptr, 10);
                                     fleet[idx].gold = (int)strtol(endptr, NULL, 10);
