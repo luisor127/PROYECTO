@@ -253,10 +253,10 @@ int main(int argc, char *argv[]) {
             else if (strcmp(buffer, "status") == 0) {
                 for (int i = 0; i < ship_count; i++) {
                     if (fleet[i].pid > 0) {
-                        fprintf(stderr, "Barco %d Vivo (ID: %d, PID: %d) En: (%d, %d) Comida: %d Oro: %d\n", 
+                        fprintf(stderr, "Barco %d Vivo (ID: %d, PID: %d) En: (%d, %d) "AZUL "Comida: %d"RESET""AMARILLO"  Oro: %d\n"RESET, 
                                 i+1, fleet[i].id, fleet[i].pid, fleet[i].x, fleet[i].y, fleet[i].food, fleet[i].gold);
                     } else {
-                        fprintf(stderr, "Barco %d Terminado (ID: %d, PID: %d) En: (%d, %d) Comida: %d Oro: %d\n", 
+                        fprintf(stderr, "Barco %d Terminado (ID: %d, PID: %d) En: (%d, %d) "AZUL "Comida: %d"RESET""AMARILLO"  Oro: %d\n"RESET, 
                                 i+1, fleet[i].id, -fleet[i].pid, fleet[i].x, fleet[i].y, fleet[i].food, fleet[i].gold);
                     }
                 }

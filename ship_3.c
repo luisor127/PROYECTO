@@ -154,7 +154,7 @@ void try_move(int dx, int dy) {
 
     // 6. IMPRIMIR (ÉXITO)
         //map_print(ship.mapa); // Mapa primero
-        ship_print();
+        //ship_print();
 
         // Mensajes de eventos
         if (cell_type == 'I') 
@@ -165,7 +165,13 @@ void try_move(int dx, int dy) {
 
             fprintf(stderr, "Barco %d alcanzó un " MAGENTA "PUERTO " RESET "(%d, %d),"AZUL" comida incrementada a %d.\n"RESET, ship.pid, ship.x, ship.y, ship.food);
     
-        printf("OK %d %d\n", ship.food, ship.gold);
+        if (es_capitan) {
+            // Modo Capitán: Mandamos los datos crudos por el tubo invisible
+            printf("OK %d %d\n", ship.food, ship.gold);
+        } else {
+            // Modo Random: Imprimimos el OK verde bonito en la terminal
+            printf(VERDE "OK" RESET "\n");
+        }
         fflush(stdout);
         
         if (es_capitan == 0)
