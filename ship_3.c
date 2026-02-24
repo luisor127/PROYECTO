@@ -1,6 +1,6 @@
 #include <stdio.h>
-#include <stdlib.h> // Necesario para strtol
-#include <unistd.h> // Necesario para read, getpid
+#include <stdlib.h> 
+#include <unistd.h> 
 #include <string.h>
 #include <time.h>
 #include <errno.h>
@@ -32,12 +32,12 @@ typedef struct {
     pid_t pid;
 } Ship;
 
-// Variable GLOBAL
+// Variables globales
 Ship ship;
 int es_capitan = 0; 
 int ursula_fd = -1;
 
-// Inicialización barco
+// Inicialización del barco
 void ship_init(Map *mapa, int x, int y, int food) {
 
     ship.mapa = mapa;
@@ -55,7 +55,7 @@ void ship_print() {
             ship.pid, ship.x, ship.y, ship.food, ship.gold);
 }
 
-// --- NUEVO: Función para avisar a Úrsula de que morimos ---
+// --- Función para avisar a Úrsula de que morimos ---
 void avisar_ursula_terminacion() {
     if (ursula_fd != -1) {
         char msg[256];
@@ -117,7 +117,7 @@ void handle_signal(int sig) {
     }
 }
 
-// Función genérica para intentar moverse
+// Función para intentar moverse
 void try_move(int dx, int dy) {
 
    // 1. Verificar Comida
@@ -178,24 +178,23 @@ void try_move(int dx, int dy) {
             fprintf(stderr, "Barco %d alcanzó un " MAGENTA "PUERTO " RESET "(%d, %d),"AZUL" comida incrementada a %d.\n"RESET, ship.pid, ship.x, ship.y, ship.food);
     
         if (es_capitan) {
-            // Modo Capitán: Mandamos los datos crudos por el tubo invisible
+            // Modo Capitán: Mandamos los datospor la tubería
             printf("OK %d %d\n", ship.food, ship.gold);
         } else {
-            // Modo Random: Imprimimos el OK verde bonito en la terminal
+            // Modo Random: Imprimimos el OK en la terminal
             printf(VERDE "OK" RESET "\n");
         }
         fflush(stdout);
 
-        // --- NUEVO: Informar a Úrsula del movimiento ---
+        // --- Informamos a Úrsula del movimiento ---
         if (ursula_fd != -1) {
             char msg[256];
             sprintf(msg, "%d, MOVE, %d, %d, %d, %d\n", ship.pid, ship.x, ship.y, ship.food, ship.gold);
             write(ursula_fd, msg, strlen(msg));
         }
-        // ----------------------------------------------
         
         if (es_capitan == 0)
-            ship_print(); // Aquí se imprime el estado en caso de éxito
+            ship_print(); //Imprime info en caso de éxito
     
 }
 
@@ -213,7 +212,6 @@ static void parse_args(int argc, char *argv[], char **map_file, int *pos_x, int 
 
     for (int i = 1; i < argc; i++) {
 
-        // strtol(cadena, puntero_final, base_decimal)
         if (strcmp(argv[i], "--map") == 0) {
 
             if (i + 1 >= argc || strncmp(argv[i+1], "--", 2) == 0) {
@@ -265,7 +263,7 @@ static void parse_args(int argc, char *argv[], char **map_file, int *pos_x, int 
                 faltan_coords = 1;
             }
 
-            // 3. Si en algún momento vimos que faltaba algo, soltamos el error general
+            // 3. Si en algún momento vimos que faltaba algo, mandamos el error general
             if (faltan_coords == 1) {
 
                 fprintf(stderr, ROJO "Error: '--pos' requiere de dos coordenadas, 'x' e 'y'." RESET "\n");
@@ -326,7 +324,7 @@ static void parse_args(int argc, char *argv[], char **map_file, int *pos_x, int 
                 faltan_parametros = 1;
             }
 
-            // 3. Si en algún momento vimos que faltaba algo, soltamos el error general
+            // 3. Si en algún momento vimos que faltaba algo, mandamos el error general
             if (faltan_parametros == 1) {
 
                 fprintf(stderr, ROJO "Error: '--random' requiere de dos parámetros, 'pasos' y 'velocidad'." RESET "\n");
@@ -339,7 +337,7 @@ static void parse_args(int argc, char *argv[], char **map_file, int *pos_x, int 
             *captain_mode = 1;
         } 
 
-        // --- NUEVO: Leer argumento de Úrsula ---
+        // --- Leer argumento de Úrsula ---
         else if (strcmp(argv[i], "--ursula") == 0) {
             if (i + 1 < argc && strncmp(argv[i+1], "--", 2) != 0) {
                 *ursula_fifo = argv[++i];
@@ -348,7 +346,6 @@ static void parse_args(int argc, char *argv[], char **map_file, int *pos_x, int 
                 errores = 1;
             }
         }
-        // ---------------------------------------
 
         else {
 
@@ -409,7 +406,7 @@ int main(int argc, char *argv[]) {
 
         ship_init(mapa_ptr, pos_x, pos_y, food);
 
-        // --- NUEVO: Conectar con Úrsula y mandar INIT ---
+        // --- Conectar con Úrsula y mandar INIT ---
         if (ursula_fifo != NULL) {
             ursula_fd = open(ursula_fifo, O_WRONLY);
             if (ursula_fd != -1) {
@@ -418,7 +415,6 @@ int main(int argc, char *argv[]) {
                 write(ursula_fd, msg, strlen(msg));
             }
         }
-        // ------------------------------------------------
 
     } else {
 
@@ -440,13 +436,12 @@ int main(int argc, char *argv[]) {
     // --- LÓGICA PRINCIPAL ---
     if (captain_mode) {
 
-        // MODO MANUAL: Sustitución de SCANF por READ (letra a letra)
         char buffer[100]; // Buffer para guardar la palabra
         char c;           // Variable auxiliar para leer 1 byte
         int i = 0;        // Contador del buffer
 
 
-        // Leemos 1 byte del descriptor 0 (Entrada Estándar)
+        // Leemos 1 byte
         while (read(STDIN_FILENO, &c, 1) > 0) {
             
             if (c == '\n') {
@@ -466,7 +461,7 @@ int main(int argc, char *argv[]) {
 
                 } 
                 
-                // --- NUEVO: Comando oculto para sincronizar con la Capitana ---
+                // --- Comando para sincronizar con la Capitana ---
                 else if (strcasecmp(buffer, "status") == 0) {
                     if (es_capitan) {
                         printf("OK %d %d\n", ship.food, ship.gold);
@@ -490,7 +485,7 @@ int main(int argc, char *argv[]) {
 
             } else {
 
-                // Si es una letra normal, la guardamos
+                // Si es una letra, la guardamos
                 if (i < 99) 
                     buffer[i++] = c;
             }
