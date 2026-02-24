@@ -108,10 +108,13 @@ void try_move(int dx, int dy) {
     if (ship.food < 5) {
 
             printf(ROJO "NOK" RESET "\n"); 
+<<<<<<< HEAD
 
             if (es_capitan == 0) 
                 ship_print();  
             
+=======
+>>>>>>> 61204fa6012e7072684a05130ff8f98b0dde8bbc
             //ship_print(); // AÑADIDO: Para imprimir estado al fallar
             fflush(stdout); 
             return;
@@ -164,6 +167,7 @@ void try_move(int dx, int dy) {
         else if (cell_type == 'P') 
 
             fprintf(stderr, "Barco %d alcanzó un " MAGENTA "PUERTO " RESET "(%d, %d),"AZUL" comida incrementada a %d.\n"RESET, ship.pid, ship.x, ship.y, ship.food);
+<<<<<<< HEAD
     
         if (es_capitan) {
             // Modo Capitán: Mandamos los datos crudos por el tubo invisible
@@ -176,6 +180,12 @@ void try_move(int dx, int dy) {
         
         if (es_capitan == 0)
             ship_print(); // Aquí se imprime el estado en caso de éxito
+=======
+
+        printf(VERDE "OK" RESET "\n");
+        fflush(stdout); 
+      //  ship_print(); // Aquí se imprime el estado en caso de éxito
+>>>>>>> 61204fa6012e7072684a05130ff8f98b0dde8bbc
     
 }
 
