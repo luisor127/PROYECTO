@@ -127,8 +127,7 @@ void try_move(int dx, int dy) {
 
             if (es_capitan == 0) 
                 ship_print();  
-            
-            //ship_print(); // AÑADIDO: Para imprimir estado al fallar
+        
             fflush(stdout); 
             return;
     }
@@ -140,7 +139,6 @@ void try_move(int dx, int dy) {
     if (!map_can_sail(ship.mapa, new_x, new_y)) {
 
             printf(ROJO "NOK" RESET "\n"); 
-            //ship_print(); // Imprimes mapa al chocar igualmente, para mostrar la posición del barco.
             fflush(stdout); 
             return; 
     }
@@ -169,8 +167,6 @@ void try_move(int dx, int dy) {
 
 
     // 6. IMPRIMIR (ÉXITO)
-        //map_print(ship.mapa); // Mapa primero
-        //ship_print();
 
         // Mensajes de eventos
         if (cell_type == 'I') 
@@ -208,7 +204,6 @@ void move_randomly_step() {
 
     int dir_idx = rand() % 4;
     try_move(directions[dir_idx][0], directions[dir_idx][1]);
-    //ship_print(); 
 }
 
 // Función para parsear argumentos 
@@ -224,8 +219,6 @@ static void parse_args(int argc, char *argv[], char **map_file, int *pos_x, int 
             if (i + 1 >= argc || strncmp(argv[i+1], "--", 2) == 0) {
 
                 fprintf(stderr, ROJO "Error, '--map' requiere un nombre de archivo." RESET "\n");
-                //print_help(argv[0]);
-                //exit(1);
                 errores = 1;
 
             } else {
@@ -286,8 +279,6 @@ static void parse_args(int argc, char *argv[], char **map_file, int *pos_x, int 
             if (i + 1 >= argc || strncmp(argv[i+1], "--", 2) == 0) {
 
                 fprintf(stderr, ROJO "Error: '--food' requiere una cantidad inicial." RESET "\n");
-                //print_help(argv[0]);
-                //exit(1);
                 errores = 1;
 
             } else {
@@ -362,8 +353,6 @@ static void parse_args(int argc, char *argv[], char **map_file, int *pos_x, int 
         else {
 
             fprintf(stderr, ROJO "Error, argumento '%s' no reconocido."RESET "\n", argv[i]);
-            //print_help(argv[0]);
-            //exit(1);
             errores = 1;
         }
     }
@@ -398,7 +387,6 @@ int main(int argc, char *argv[]) {
     if (!captain_mode && random_steps == -1 ) {
 
         fprintf(stderr, ROJO "Error: Debes especificar un modo de juego: " RESET "'captain' o 'random'." "\n");
-        //fprintf(stderr, AMARILLO "Usa '--captain' para modo manual o '--random' para automático." RESET "\n");
         exit(1); //Cerramos programa para introducir comando de nuevo
     }
 
@@ -408,7 +396,6 @@ int main(int argc, char *argv[]) {
         exit(1);
     }
 
-    //fprintf(stderr, "\nMapa: %s.\nPosición: (%d, %d).\nComida: %d\n\n", map_file, pos_x, pos_y, food);
 
     // Carga del mapa 
     Map *mapa_ptr = map_load(map_file);
@@ -440,7 +427,6 @@ int main(int argc, char *argv[]) {
         exit(1);
     }
     
-    //fprintf(stderr, "PID del barco: %d.\nModo: %s\n\n", ship.pid, captain_mode ? "CAPITAN" : "RANDOM");
 
     signal(SIGALRM, handle_signal);
     signal(SIGUSR1, handle_signal);
@@ -459,7 +445,6 @@ int main(int argc, char *argv[]) {
         char c;           // Variable auxiliar para leer 1 byte
         int i = 0;        // Contador del buffer
 
-        //fprintf(stderr, "Esperando comandos: {up, down, left, right, exit}\n");
 
         // Leemos 1 byte del descriptor 0 (Entrada Estándar)
         while (read(STDIN_FILENO, &c, 1) > 0) {
@@ -492,8 +477,6 @@ int main(int argc, char *argv[]) {
 
                 else {
 
-                    //fprintf(stderr, ROJO "ERROR, comando '%s' inválido.\n" RESET "Por favor, introduzca un comando válido: {up, down, left, right, exit}\n", buffer);
-                    //printf(ROJO "NOK\n" RESET); 
                     printf("INVALID\n");
                     fflush(stdout); 
                     continue;
